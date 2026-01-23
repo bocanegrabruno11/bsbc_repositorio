@@ -9,15 +9,31 @@ function App() {
   const [perfil, setPerfil] = useState(null)
   const [proyectos, setProyectos] = useState([])
   const [modalAbierto, setModalAbierto] = useState(false)
+  const [loadingProyectos, setLoadingProyectos] = useState(true)
+
   useEffect(() => {
     async function fetchDatos() {
       // 1. Cargar Perfil
       const { data: dataPerfil } = await supabase.from('perfil').select('*').single()
-      setPerfil(dataPerfil)
+      if (dataPerfil) setPerfil(dataPerfil)
       
       // 2. Cargar Proyectos
-      const { data: dataProyectos } = await supabase.from('proyectos').select('*')
-      setProyectos(dataProyectos || [])
+      try {
+        const { data: dataProyectos, error } = await supabase
+          .from('proyectos')
+          .select('*')
+          .order('id', { ascending: false }) // Ordenar: los nuevos primero
+
+        if (error) {
+          console.error("Error cargando proyectos:", error.message)
+        } else {
+          setProyectos(dataProyectos || [])
+        }
+      } catch (err) {
+        console.error("Error de conexión:", err)
+      } finally {
+        setLoadingProyectos(false)
+      }
     }
     fetchDatos()
   }, [])
@@ -26,12 +42,13 @@ function App() {
     <div>
       {/* NAVBAR */}
       <nav>
-        <span className="nav-logo">
-          {perfil ? perfil.nombre : 'Portafolio'}
-        </span>
+        {/* CORRECCIÓN: Ponemos texto fijo para asegurar que aparezca */}
+        <a href="/" className="nav-logo">
+          Portafolio
+        </a>
         <ul>
           <li><a href="#inicio">Inicio</a></li>
-          <li><a href="#sobre-mi">Sobre mí</a></li> {/* NUEVA OPCIÓN */}
+          <li><a href="#sobre-mi">Sobre mí</a></li>
           <li><a href="#proyectos">Proyectos</a></li>
           <li><a href="#contacto">Contacto</a></li>
         </ul>
@@ -40,7 +57,7 @@ function App() {
       {/* CONTENIDO PRINCIPAL */}
       <div className="main-container">
         
-        {/* 1. SECCIÓN INICIO (HERO): Foto y Título Principal */}
+        {/* 1. SECCIÓN INICIO (HERO) */}
         <motion.section 
           id="inicio" 
           style={{ textAlign: 'center', padding: '60px 0 20px 0' }}
@@ -49,32 +66,69 @@ function App() {
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
         >
-          {perfil && (
+          {perfil ? (
             <>
               {perfil.foto_url && (
                 <img className="profile-img" src={perfil.foto_url} alt="Perfil" />
               )}
-              <h1 style={{ marginTop: '20px' }}>Hola, soy {perfil.nombres}</h1>
+              
+              {/* Intentamos leer 'nombre' o 'nombres' por si acaso */}
+              <h1 style={{ marginTop: '20px' }}>Hola, soy {perfil.nombre || perfil.nombres}</h1>
               <h2 style={{ fontSize: '1.5rem', color: '#64748b', fontWeight: 'normal' }}>
                 {perfil.profesion}
               </h2>
               
-              <div style={{ marginTop: '30px' }}>
-                <a href="#proyectos" className="btn">Ver Mis Proyectos</a>
-                <a href="#sobre-mi" className="btn btn-secondary">Leer biografía</a>
+              {/* ZONA DE BOTONES ACTUALIZADA */}
+              <div style={{ 
+                marginTop: '30px', 
+                display: 'flex', 
+                justifyContent: 'center', 
+                gap: '15px', 
+                flexWrap: 'wrap' // Para que bajen si no caben en celular
+              }}>
+                
+                {/* Botón Principal: Ver Proyectos */}
+                <a href="#proyectos" className="btn">
+                  Ver Proyectos
+                </a>
+
+                {/* Botón 2: LinkedIn (Color azul oficial) */}
+                <a 
+                  href="https://www.linkedin.com/in/bruno-samir-bocanegra-chistama-520ab428a/" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="btn"
+                  style={{ backgroundColor: '#0077b5', color: 'white' }} 
+                >
+                  LinkedIn
+                </a>
+
+                {/* Botón 3: Descargar CV (Estilo borde o diferente) */}
+                <a 
+                  href="https://drive.google.com/file/d/1k0dxfrqBP_UVV0voqhQAhqOLIwoVZen_/view?usp=sharing" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="btn btn-secondary"
+                  style={{ border: '1px solid #cbd5e1' }}
+                >
+                  Descargar CV
+                </a>
+
               </div>
             </>
+          ) : (
+             <div style={{ padding: '20px' }}>Cargando perfil...</div>
           )}
         </motion.section>
 
-        {/* 2. NUEVA SECCIÓN: SOBRE MÍ */}
+        {/* 2. SECCIÓN SOBRE MÍ */}
         <motion.section 
           id="sobre-mi"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          style={{ maxWidth: '800px', margin: '0 auto 80px auto' }} // Centrado y con margen
+          style={{ maxWidth: '800px', margin: '0 auto 80px auto' }}
         >
             <div style={{ 
               background: '#fff', 
@@ -114,9 +168,16 @@ function App() {
             ))}
           </div>
 
-          {proyectos.length === 0 && (
+          {loadingProyectos && (
+             <div className="text-center" style={{ marginTop: '50px' }}>
+               <p>Cargando proyectos...</p>
+             </div>
+          )}
+
+          {!loadingProyectos && proyectos.length === 0 && (
             <div className="text-center" style={{ marginTop: '50px' }}>
-              <p>Cargando proyectos... o no hay datos aún.</p>
+              <p style={{ color: 'red' }}>⚠️ No se ven los proyectos.</p>
+              <p>Por favor revisa el paso de RLS (candado) en Supabase.</p>
             </div>
           )}
         </motion.section>
@@ -154,7 +215,7 @@ function App() {
 
       {/* FOOTER */}
       <footer>
-        <p>© 2026 {perfil ? perfil.nombre : 'Mi Portafolio'}. Hecho con React, Supabase & Vercel.</p>
+        <p>© 2026 {perfil ? (perfil.nombre || perfil.nombres) : 'Mi Portafolio'}. Hecho con React.</p>
       </footer>
       <ContactoModal 
         isOpen={modalAbierto} 

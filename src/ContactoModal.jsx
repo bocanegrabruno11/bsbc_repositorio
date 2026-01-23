@@ -94,7 +94,7 @@ function ContactoModal({ isOpen, onClose }) {
             </div>
 
             <button type="submit" className="btn" style={{ width: '100%', marginTop: '10px' }}>
-              Abrir Correo
+              Continuar
             </button>
           </form>
         </motion.div>

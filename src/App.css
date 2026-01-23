@@ -106,6 +106,7 @@ nav a:hover { color: var(--accent); }
 section {
   margin-bottom: 60px;
   width: 100%;
+  scroll-margin-top: calc(var(--nav-height) + 20px);
 }
 
 /* Estilos de Texto */
